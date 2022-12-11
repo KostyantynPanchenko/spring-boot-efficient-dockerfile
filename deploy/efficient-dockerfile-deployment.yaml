@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: efficient-dockerfile-deployment
+  labels:
+    app: efficient-dockerfile
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: efficient-dockerfile
+  template:
+    metadata:
+      labels:
+        app: efficient-dockerfile
+    spec:
+      containers:
+        - name: efficient-dockerfile
+          image: example/spring-boot-efficient-dockerfile:0.1.0
+          ports:
+            - containerPort: 80
+          livenessProbe:
+            failureThreshold: 5
+            initialDelaySeconds: 5    # when to do the first call to the endpoint
+            timeoutSeconds: 5         # if there is no response when you should time out
+            periodSeconds: 10         # how often to call the endpoint
+            httpGet:
+              port: 8080
+              path: /actuator/health/liveness
+          readinessProbe:
+            failureThreshold: 5
+            initialDelaySeconds: 30   # when to do the first call to the endpoint
+            timeoutSeconds: 5         # if there is no response when you should time out
+            periodSeconds: 10         # how often to call the endpoint
+            httpGet:
+              port: 8008
+              path: /actuator/health/readiness
+          resources:
+            requests:
+              memory: "1000Mi"        # always set requests == limits
+              cpu: "2000m"            # always set requests, NEVER set limits
+            limits:
+              memory:
+                "1000Mi"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "c", "sleep 10"]
+      terminationGracePeriodSeconds: 30

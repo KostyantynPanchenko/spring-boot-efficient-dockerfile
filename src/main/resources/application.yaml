@@ -1,0 +1,28 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+  endpoint:
+    health:
+      enabled: true
+      probes:
+        enabled: true
+    info:
+      enabled: true
+
+server:
+  shutdown: graceful
+
+spring:
+  application:
+    name: Efficient Dockerfile and Production Considerations for Spring on Kubernetes
+---
+spring:
+  config:
+    activate:
+      on-cloud-platform: kubernetes
+  lifecycle:
+    timeout-per-shutdown-phase: 20s # defaults to 30s

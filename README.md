@@ -1,12 +1,12 @@
 # Spring Boot efficient Dockerfile example
 
-### Steps to reproduce
+## Build the Docker image and run it
 
 * `./gradlew clean build`
 * `mkdir build/libs/extracted`
 * `java -Djarmode=layertools -jar build/libs/*.jar extract --destination build/libs/extracted`
-* `docker build --tag example/spring-boot-efficient-dockerfile:latest .`
-* `docker run -p 8082:8080 --name efficient-dockerfile example/spring-boot-efficient-dockerfile`
+* `docker build --tag example/spring-boot-efficient-dockerfile:0.1.0 .`
+* `docker run -p 8082:8080 --name efficient-dockerfile example/spring-boot-efficient-dockerfile:0.1.0`
 * `curl localhost:8082/hello?name=Adam`
 
 ### Notes About the Artifacts and Multi-Stage Builds
@@ -42,14 +42,54 @@ ENTRYPOINT java -cp app:app/lib/* com.example.dockerfile.SpringBootEfficientDock
 ```
 
 Then you can simply run:
-* `docker build --tag example/spring-boot-efficient-dockerfile:latest .`
-* `docker run -p 8082:8080 --name efficient-dockerfile example/spring-boot-efficient-dockerfile`
+* `docker build --tag example/spring-boot-efficient-dockerfile:0.1.0 .`
+* `docker run -p 8082:8080 --name efficient-dockerfile example/spring-boot-efficient-dockerfile:0.1.0`
 * `curl localhost:8082/hello?name=Adam`
+
+## Run in local Minikube
+
+* Open the terminal and run `minikube start`
+* Pull the image into the Minikube cluster `minikube image load example/spring-boot-efficient-dockerfile:0.1.0`
+* Navigate to `deploy` folder `cd deploy`
+* Run `kubectl apply -f efficient-dockerfile-deployment.yaml`
+* Verify the service is up and running `kubectl get all`
+* Forward the port from the
+  cluster `kubectl port-forward deployment/efficient-dockerfile-deployment 8080:8080`
+* Issue `GET` request `http://localhost:8080/hello?name=Stan`
+
+## Production Considerations for Spring on Kubernetes
+
+* 1000 millicores - 1 vCPU
+* CPU request - the <b><i>minimum</i></b> guaranteed amount of CPU; they relate with resource allocation
+* CPU limits - the <b><i>maximum</i></b> amount of CPU that your workload can utilize before being throttled; they can impact performance
+
+So how should you set those values?
+
+|  All Pods have  |                        CPU Limits                        |                              No CPU Limits                              |
+|:---------------:|:--------------------------------------------------------:|:-----------------------------------------------------------------------:|
+|  CPU requests   | You are guaranteed CPU between the request and the limit | You are guaranteed your request. Excess CPU is available and not wasted |
+| No CPU requests |      You are guaranteed the limit, no more, no less      |                 No one is guaranteed any CPU! Wild west                 |
+
+* Always set CPU requests, never set CPU limits!
+* Set `-XX:ActiveProcessorCount` <b><i>explicitly</i></b>!
+* Always set memory requests == limits
+
+### Graceful Shutdown Flow
+* `preStop` is being executed (in this example we are waiting up to 10 seconds, see deployment file preStop:exec:command)
+* Kubernetes sends a `SIGTERM` to a pod
+* A pod receives the signal and begins the shutdown process
+* Any new requests to the web server are blocked, waiting for in-flight requests to complete their tasks up to `timeout-per-shutwodn-phase`
+* We should have Kubernetes `terminationGracePeriodSeconds` > `preStop` + `timeout-per-shutwodn-phase`
+* Be aware that `terminationGracePeriodSeconds` defaults to 30s and `timeout-per-shutwodn-phase` also defaults to 30s!
 
 ### Useful Links
 * [A Better Dockerfile](https://spring.io/guides/topicals/spring-boot-docker/)
+* [Production Considerations for Spring on Kubernetes](https://www.youtube.com/watch?v=hAHXp_jQWVo)
+* [kubectl Cheat Sheet](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
+
+### Official docs
+
 * [Official Gradle documentation](https://docs.gradle.org)
 * [Spring Boot Gradle Plugin Reference Guide](https://docs.spring.io/spring-boot/docs/2.7.6/gradle-plugin/reference/html/)
 * [Create an OCI image](https://docs.spring.io/spring-boot/docs/2.7.6/gradle-plugin/reference/html/#build-image)
 * [Spring Web](https://docs.spring.io/spring-boot/docs/2.7.6/reference/htmlsingle/#web)
-
