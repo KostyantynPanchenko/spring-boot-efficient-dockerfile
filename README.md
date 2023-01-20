@@ -2,9 +2,6 @@
 
 ## Build the Docker image and run it
 
-* `./gradlew clean build`
-* `mkdir build/libs/extracted`
-* `java -Djarmode=layertools -jar build/libs/*.jar extract --destination build/libs/extracted`
 * `docker build --tag example/spring-boot-efficient-dockerfile:0.1.0 .`
 * `docker run -p 8082:8080 --name efficient-dockerfile example/spring-boot-efficient-dockerfile:0.1.0`
 * `curl localhost:8082/hello?name=Adam`
@@ -26,6 +23,7 @@ COPY src src
 
 RUN ./gradlew clean build
 RUN mkdir -p build/libs/dependency && (cd build/libs/dependency; jar -xf ../*.jar)
+RUN java -Djarmode=layertools -jar build/libs/*.jar extract --destination build/libs/dependency
 
 FROM eclipse-temurin:17-jre-alpine@sha256:ddcde24217dc1a9df56c7dd206ee1f4dc89f6988c9364968cd02c6cbeb21b1de
 VOLUME /tmp
@@ -34,11 +32,12 @@ RUN addgroup --system dockerfilegroup && adduser --system dockerfile --ingroup d
 USER dockerfile:dockerfilegroup
 
 ARG DEPENDENCY=/app/build/libs/dependency
-COPY --from=theBuildStage ${DEPENDENCY}/BOOT-INF/lib /app/lib
-COPY --from=theBuildStage ${DEPENDENCY}/META-INF /app/META-INF
-COPY --from=theBuildStage ${DEPENDENCY}/BOOT-INF/classes /app
+COPY --from=theBuildStage ${DEPENDENCY}/dependencies/ ./
+COPY --from=theBuildStage ${DEPENDENCY}/spring-boot-loader/ ./
+COPY --from=theBuildStage ${DEPENDENCY}/snapshot-dependencies/ ./
+COPY --from=theBuildStage ${DEPENDENCY}/application/ ./
 
-ENTRYPOINT java -cp app:app/lib/* com.example.dockerfile.SpringBootEfficientDockerfileApplication
+ENTRYPOINT java org.springframework.boot.loader.JarLauncher
 ```
 
 Then you can simply run:
