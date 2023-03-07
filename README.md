@@ -84,6 +84,7 @@ So how should you set those values?
 ### Useful Links
 * [A Better Dockerfile](https://spring.io/guides/topicals/spring-boot-docker/)
 * [Production Considerations for Spring on Kubernetes](https://www.youtube.com/watch?v=hAHXp_jQWVo)
+* [Spring Boot Loves K8s](https://www.youtube.com/watch?v=nPACI6-J9Jc)
 * [kubectl Cheat Sheet](https://kubernetes.io/docs/reference/kubectl/cheatsheet/)
 
 ### Official docs
