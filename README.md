@@ -37,7 +37,7 @@ RUN cd build/libs && java -Djarmode=layertools -jar *.jar extract --destination 
 FROM eclipse-temurin:17-jre-alpine
 
 # Create a non-root group and user with specific IDs
-RUN addgroup --system SpringGroup && adduser --system SpringGroup --ingroup SpringGroup
+RUN addgroup --system SpringGroup && adduser --system SpringUser --ingroup SpringGroup
 # Set the user to run the application
 USER SpringUser
 
