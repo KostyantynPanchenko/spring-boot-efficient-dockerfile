@@ -31,13 +31,15 @@ RUN ./gradlew bootJar --layered
 
 # Extract the layers
 RUN mkdir -p extracted
-RUN cd build/libs && java -Djarmode=layertools -jar app.jar extract --destination ../../extracted
+RUN cd build/libs && java -Djarmode=layertools -jar *.jar extract --destination ../../extracted
 
 # Stage 2: Create the final image and copy specific layers
 FROM eclipse-temurin:17-jre-alpine
 
 # Create a non-root group and user with specific IDs
-RUN addgroup -g 555 SpringGroup && adduser -u 1000 -G SpringGroup -s /bin/sh -D SpringUser
+RUN addgroup --system SpringGroup && adduser --system SpringGroup --ingroup SpringGroup
+# Set the user to run the application
+USER SpringUser
 
 WORKDIR /app
 
@@ -53,7 +55,7 @@ ENTRYPOINT ["java", "org.springframework.boot.loader.JarLauncher", "dependencies
 ```
 
 ## OLD VERSION
-The example above was modified to use Docker multi-stage build. Just replace the content of the Dockerfile with the following:
+The original example from the source code was modified to use Docker multi-stage build. Just replace the content of the Dockerfile with the following:
 
 ```shell
 FROM eclipse-temurin:17-jdk-alpine@sha256:9c379272e10177b992a06692bd07ee457681f5f56c131607a045a269a4ddc36b as theBuildStage
