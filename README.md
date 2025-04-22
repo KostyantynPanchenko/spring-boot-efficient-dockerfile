@@ -7,13 +7,15 @@
 * `curl localhost:8082/hello?name=Adam`
 
 ### Notes About the Artifacts and Multi-Stage Builds
-### UPDATE
-Leverage Spring Boot layers to write efficient Dockerfile:
+### UPDATE due to a mistake in the Spring Boot 3.4.4 documentation
+[Spring Boot Dockerfile documentation](https://docs.spring.io/spring-boot/reference/packaging/container-images/dockerfiles.html) contains a mistake in the ENTRYPOINT instruction. The correct Dockerfile is listed below.
+
+Corrected Dockerfile:
 ```shell
 # Stage 1: Build and Explode the JAR
-FROM eclipse-temurin:17-jdk-alpine AS builder
+FROM eclipse-temurin:17-jdk-alpine AS builderStage
 
-WORKDIR /app
+WORKDIR /builder
 
 # Copy Gradle wrapper and configuration
 COPY gradlew .
@@ -27,14 +29,17 @@ RUN ./gradlew dependencies --write-locks
 COPY src ./src
 
 # Build the application and create layered JAR
-RUN ./gradlew bootJar --layered
+RUN ./gradlew bootJar
+
+# Copy the jar file to the working directory and rename it to application.jar
+COPY build/libs/hello-world-1.0.0.jar application.jar
 
 # Extract the layers
-RUN mkdir -p extracted
-RUN cd build/libs && java -Djarmode=layertools -jar *.jar extract --destination ../../extracted
+RUN #mkdir -p extracted
+RUN java -Djarmode=layertools -jar application.jar extract --destination extracted
 
 # Stage 2: Create the final image and copy specific layers
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre-alpine as runTime
 
 # Create a non-root group and user with specific IDs
 RUN addgroup --system SpringGroup && adduser --system SpringUser --ingroup SpringGroup
@@ -44,14 +49,13 @@ USER SpringUser
 WORKDIR /app
 
 # Copy layers selectively
-COPY --from=builder /app/extracted/dependencies/ ./dependencies/
-COPY --from=builder /app/extracted/spring-boot-loader/ ./
-COPY --from=builder /app/extracted/snapshot-dependencies/ ./snapshot-dependencies/
-COPY --from=builder /app/extracted/application/ ./application/
+COPY --from=builderStage /builder/extracted/dependencies/ ./
+COPY --from=builderStage /builder/extracted/spring-boot-loader/ ./
+COPY --from=builderStage /builder/extracted/snapshot-dependencies/ ./
+COPY --from=builderStage /builder/extracted/application/ ./
 
 # Set the entry point to use the exploded structure
-# Don't forget to specify directories for JarLauncher to seek for external dependencies
-ENTRYPOINT ["java", "org.springframework.boot.loader.JarLauncher", "dependencies/", "snapshot-dependencies/", "application/"]
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
 ```
 
 ## OLD VERSION
