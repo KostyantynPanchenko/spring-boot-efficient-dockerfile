@@ -7,7 +7,53 @@
 * `curl localhost:8082/hello?name=Adam`
 
 ### Notes About the Artifacts and Multi-Stage Builds
-The example above be modified to use Docker multi-stage build. Just replace the content of the Dockerfile with the following:
+### UPDATE
+Leverage Spring Boot layers to write efficient Dockerfile:
+```shell
+# Stage 1: Build and Explode the JAR
+FROM eclipse-temurin:17-jdk-alpine AS builder
+
+WORKDIR /app
+
+# Copy Gradle wrapper and configuration
+COPY gradlew .
+COPY gradle ./gradle
+COPY build.gradle settings.gradle .
+
+# Resolve project dependencies and download them
+RUN ./gradlew dependencies --write-locks
+
+# Copy the application source code
+COPY src ./src
+
+# Build the application and create layered JAR
+RUN ./gradlew bootJar --layered
+
+# Extract the layers
+RUN mkdir -p extracted
+RUN cd build/libs && java -Djarmode=layertools -jar app.jar extract --destination ../../extracted
+
+# Stage 2: Create the final image and copy specific layers
+FROM eclipse-temurin:17-jre-alpine
+
+# Create a non-root group and user with specific IDs
+RUN addgroup -g 555 SpringGroup && adduser -u 1000 -G SpringGroup -s /bin/sh -D SpringUser
+
+WORKDIR /app
+
+# Copy layers selectively
+COPY --from=builder /app/extracted/dependencies/ ./dependencies/
+COPY --from=builder /app/extracted/spring-boot-loader/ ./
+COPY --from=builder /app/extracted/snapshot-dependencies/ ./snapshot-dependencies/
+COPY --from=builder /app/extracted/application/ ./application/
+
+# Set the entry point to use the exploded structure
+# Don't forget to specify directories for JarLauncher to seek for external dependencies
+ENTRYPOINT ["java", "org.springframework.boot.loader.JarLauncher", "dependencies/", "snapshot-dependencies/", "application/"]
+```
+
+## OLD VERSION
+The example above was modified to use Docker multi-stage build. Just replace the content of the Dockerfile with the following:
 
 ```shell
 FROM eclipse-temurin:17-jdk-alpine@sha256:9c379272e10177b992a06692bd07ee457681f5f56c131607a045a269a4ddc36b as theBuildStage
