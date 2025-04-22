@@ -77,9 +77,9 @@ So how should you set those values?
 * `preStop` is being executed (in this example we are waiting up to 10 seconds, see deployment file preStop:exec:command)
 * Kubernetes sends a `SIGTERM` to a pod
 * A pod receives the signal and begins the shutdown process
-* Any new requests to the web server are blocked, waiting for in-flight requests to complete their tasks up to `timeout-per-shutwodn-phase`
-* We should have Kubernetes `terminationGracePeriodSeconds` > `preStop` + `timeout-per-shutwodn-phase`
-* Be aware that `terminationGracePeriodSeconds` defaults to 30s and `timeout-per-shutwodn-phase` also defaults to 30s!
+* Any new requests to the web server are blocked, waiting for in-flight requests to complete their tasks up to `timeout-per-shutdown-phase`
+* We should have Kubernetes `terminationGracePeriodSeconds` > `preStop` + `timeout-per-shutdown-phase`
+* Be aware that `terminationGracePeriodSeconds` defaults to 30s and `timeout-per-shutdown-phase` also defaults to 30s!
 
 ### Useful Links
 * [A Better Dockerfile](https://spring.io/guides/topicals/spring-boot-docker/)
